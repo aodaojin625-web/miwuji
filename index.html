@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>迷雾搬砖记录</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; }
+  body { font-family:-apple-system,'PingFang SC',sans-serif; background:#f5f6f8; color:#333;
+         display:flex; flex-direction:column; height:100vh; height:100dvh; overflow:hidden; }
+  .red { color:#e6432d; } .green { color:#1aad19; }
+
+  /* 顶部 */
+  .h-top { display:flex; align-items:center; padding:14px 12px 12px;
+           background:linear-gradient(135deg,#8795d8,#b39ddb); color:#fff; }
+  .season { flex:1; min-width:0; font-size:19px; font-weight:700; }
+  .h-stat { flex:1; min-width:0; text-align:center; }
+  .h-label { font-size:12px; opacity:.9; }
+  .h-num { font-size:17px; font-weight:700; color:#e6432d; margin-top:2px; }
+  .arrow { width:24px; flex-shrink:0; font-size:12px; text-align:right; }
+  .h-bottom { display:flex; background:#fff; padding:12px 0; }
+  .b-item { flex:1; min-width:0; text-align:center; }
+  .b-label { font-size:12px; color:#999; }
+  .b-num { font-size:15px; font-weight:700; margin-top:3px; }
+
+  /* 列表 */
+  .records { flex:1; min-height:0; overflow-y:auto; padding:10px 12px; }
+  .record { background:#fff; border-radius:8px; padding:12px 14px; margin-bottom:8px;
+            display:flex; justify-content:space-between; align-items:center; }
+  .r-left { flex:1; min-width:0; }
+  .r-cat { font-size:14px; font-weight:600; }
+  .r-tag { font-size:11px; padding:2px 6px; border-radius:4px; margin-left:6px; }
+  .r-tag.income { color:#e6432d; background:#fdeceb; }
+  .r-tag.expense { color:#1aad19; background:#e8f7e9; }
+  .r-remark { font-size:12px; color:#999; margin-top:4px; word-break:break-all; }
+  .r-right { text-align:right; flex-shrink:0; margin-left:10px; }
+  .r-amt { font-size:16px; font-weight:700; }
+  .r-amt.income { color:#e6432d; } .r-amt.expense { color:#1aad19; }
+  .r-date { font-size:11px; color:#aaa; margin-top:2px; }
+  .empty { text-align:center; color:#999; font-size:14px; margin-top:80px; }
+
+  /* 底部面板 */
+  .panel { background:#fff; border-radius:20px 20px 0 0; flex-shrink:0;
+           padding:14px 12px calc(14px + env(safe-area-inset-bottom));
+           box-shadow:0 -2px 12px rgba(0,0,0,.08); }
+  .p-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+  .p-title { font-size:15px; font-weight:700; }
+  .act { height:28px; padding:0 10px; border-radius:6px; color:#fff; font-size:12px;
+         display:flex; align-items:center; flex-shrink:0; }
+  .act.stats { background:#3bb09b; }
+
+  .chips { display:flex; margin-bottom:10px; align-items:center; }
+  .row-tag { width:22px; flex-shrink:0; font-size:12px; font-weight:700; margin-right:6px; }
+  .tag-in { color:#e6432d; } .tag-out { color:#1aad19; }
+  .chip { flex:1; min-width:0; margin-right:6px; height:34px; line-height:34px; text-align:center;
+          background:#f2f3f5; color:#555; font-size:13px; border-radius:6px;
+          overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .chip:last-child { margin-right:0; }
+  .chip.on { background:#f4534b; color:#fff; font-weight:600; }
+  .chip.add { background:#fff; border:1px dashed #bbb; color:#999; }
+
+  .entry { display:flex; align-items:stretch; }
+  .entry-left { flex:1; min-width:0; }
+  .e-row { display:flex; align-items:center; margin-bottom:8px; }
+  .e-row:last-child { margin-bottom:0; }
+  .day { width:44px; height:34px; line-height:34px; text-align:center; flex-shrink:0;
+         background:#f2f3f5; color:#555; font-size:13px; border-radius:6px; margin-right:6px; }
+  .day.on { background:#f4534b; color:#fff; font-weight:600; }
+  input, select { flex:1; min-width:0; height:34px; padding:0 8px; border:1px solid #e6e6e6;
+                  border-radius:6px; font-size:13px; background:#fff; }
+  .times { padding:0 6px; color:#999; flex-shrink:0; }
+  .unit-sel { width:54px; flex:0 0 auto; margin-left:6px; }
+  .confirm { width:72px; flex-shrink:0; margin-left:8px; display:flex; align-items:center;
+             justify-content:center; background:#f4534b; color:#fff;
+             font-size:16px; font-weight:600; border-radius:10px; }
+
+  /* 统计弹窗 */
+  .mask { position:fixed; inset:0; background:rgba(0,0,0,.55); display:none;
+          align-items:center; justify-content:center; z-index:99; }
+  .mask.show { display:flex; }
+  .modal { width:88%; max-height:70vh; background:#fff; border-radius:14px;
+           padding:20px 16px; display:flex; flex-direction:column; }
+  .m-title { text-align:center; font-size:16px; font-weight:700; margin-bottom:14px; }
+  .m-body { overflow-y:auto; max-height:50vh; }
+  .m-sec { font-size:13px; font-weight:600; color:#999; margin:14px 0 6px; }
+  .m-row { display:flex; align-items:center; margin-bottom:8px; }
+  .m-cat { width:86px; font-size:13px; flex-shrink:0; }
+  .m-count { font-size:10px; color:#aaa; }
+  .m-bar { flex:1; min-width:0; height:10px; background:#f2f3f5; border-radius:5px; overflow:hidden; margin:0 8px; }
+  .m-fill { height:100%; border-radius:5px; }
+  .red-bg { background:#f4534b; } .green-bg { background:#1aad19; }
+  .m-amt { width:70px; text-align:right; font-size:13px; font-weight:600; flex-shrink:0; }
+  .m-none { font-size:12px; color:#bbb; padding:6px 0 10px; }
+  .s-block { background:#fafafa; border-radius:8px; padding:0 10px; margin-bottom:8px; }
+  .s-head { display:flex; justify-content:space-between; align-items:center; padding:12px 4px; }
+  .s-name { font-size:14px; font-weight:700; }
+  .s-profit { font-size:13px; font-weight:700; }
+  .s-detail { padding-bottom:10px; }
+  .s-total { display:flex; justify-content:space-around; padding:4px 0 8px; font-size:12px; color:#666; }
+  .m-close-btn { margin-top:12px; height:40px; line-height:40px; text-align:center;
+                 background:#f2f3f5; color:#666; border-radius:8px; font-size:14px; }
+
+  /* 底部选项弹窗(选择子类/删除确认) */
+  .sheet-mask { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:100;
+                display:none; align-items:flex-end; }
+  .sheet-mask.show { display:flex; }
+  .sheet { width:100%; background:#fff; border-radius:16px 16px 0 0;
+           padding:16px 0 calc(16px + env(safe-area-inset-bottom)); }
+  .sheet-item { padding:16px; text-align:center; font-size:16px; border-bottom:1px solid #f5f5f5; }
+  .sheet-item:last-child { border-bottom:none; }
+  .sheet-item.cancel { color:#999; margin-top:8px; }
+  .sheet-item.custom { color:#8d7ef0; }
+  .sheet-item.danger { color:#e6432d; }
+  .sheet-item.underline { font-size:13px; color:#999; }
+
+  /* 文本输入弹窗(新增类目/子类/赛季) */
+  .input-mask { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:101;
+                display:none; align-items:center; justify-content:center; }
+  .input-mask.show { display:flex; }
+  .input-box { width:80%; background:#fff; border-radius:14px; padding:20px 16px; }
+  .input-title { font-size:15px; font-weight:700; text-align:center; margin-bottom:14px; }
+  .input-box input { width:100%; height:40px; margin-bottom:16px; text-align:center; }
+  .input-btns { display:flex; }
+  .input-btns .ib { flex:1; height:40px; line-height:40px; text-align:center;
+                    border-radius:8px; font-size:14px; }
+  .ib.cancel { background:#f2f3f5; color:#666; margin-right:10px; }
+  .ib.ok { background:#f4534b; color:#fff; font-weight:600; }
+
+  /* 窄屏(≤360px)再缩一档 */
+  @media (max-width:360px){
+    .season { font-size:17px; }
+    .h-num { font-size:15px; }
+    .b-num { font-size:14px; }
+    .chip { font-size:12px; }
+    .confirm { width:58px; font-size:14px; }
+    input, select { font-size:12px; padding:0 6px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="h-top">
+  <div class="season" id="seasonTitle" onclick="toggleSeason()">S14赛季</div>
+  <div class="h-stat"><div class="h-label">本赛季盈利</div><div class="h-num" id="seasonProfit">0.00</div></div>
+  <div class="h-stat"><div class="h-label">今日盈利</div><div class="h-num" id="todayProfit">0.00</div></div>
+  <div class="arrow" onclick="toggleSeason()">▼</div>
+</div>
+<div class="h-bottom">
+  <div class="b-item"><div class="b-label">赛季收入</div><div class="b-num red" id="seasonIncome">0.00</div></div>
+  <div class="b-item"><div class="b-label">赛季支出</div><div class="b-num green" id="seasonExpense">0.00</div></div>
+  <div class="b-item"><div class="b-label">今日收入</div><div class="b-num red" id="todayIncome">0.00</div></div>
+  <div class="b-item"><div class="b-label">今日支出</div><div class="b-num green" id="todayExpense">0.00</div></div>
+</div>
+<div id="seasonList" style="display:none;background:#fff;padding:4px 0;"></div>
+
+<div class="records" id="records">
+  <div class="empty">暂无记录,开始记账吧</div>
+</div>
+
+<div class="panel">
+  <div class="p-header">
+    <div class="p-title" id="pTitle">S14赛季记账</div>
+    <div class="act stats" onclick="openStats()">📊 统计</div>
+  </div>
+
+  <div class="chips" id="incomeRow"></div>
+  <div class="chips" id="expenseRow"></div>
+
+  <div class="entry">
+    <div class="entry-left">
+      <div class="e-row">
+        <div class="day" data-d="yesterday" onclick="setQuick(this)">昨日</div>
+        <div class="day on" data-d="today" onclick="setQuick(this)">今日</div>
+        <input type="number" id="amount" placeholder="金额" inputmode="decimal">
+      </div>
+      <div class="e-row">
+        <input type="number" id="price" placeholder="单价" inputmode="decimal">
+        <div class="times">×</div>
+        <input type="number" id="qty" placeholder="数量" inputmode="decimal">
+        <select class="unit-sel" id="unit"><option>个</option><option>组</option></select>
+      </div>
+      <div class="e-row">
+        <input type="date" id="date" style="width:118px;flex:0 0 auto;margin-right:6px;">
+        <input id="remark" placeholder="备注">
+      </div>
+    </div>
+    <div class="confirm" onclick="submit()">确认</div>
+  </div>
+</div>
+
+<!-- 统计弹窗 -->
+<div class="mask" id="statsMask" onclick="if(event.target===this)closeStats()">
+  <div class="modal">
+    <div class="m-title">赛季统计</div>
+    <div class="m-body" id="statsBody"></div>
+    <div class="m-close-btn" onclick="closeStats()">关闭</div>
+  </div>
+</div>
+
+<!-- 底部选项弹窗(选择子类/删除确认) -->
+<div class="sheet-mask" id="sheetMask" onclick="if(event.target===this)closeSheet()">
+  <div class="sheet" id="sheetList"></div>
+</div>
+
+<!-- 文本输入弹窗(新增类目/子类/赛季) -->
+<div class="input-mask" id="inputMask">
+  <div class="input-box">
+    <div class="input-title" id="inputTitle"></div>
+    <input id="inputField" placeholder="输入名称">
+    <div class="input-btns">
+      <div class="ib cancel" onclick="closeInput()">取消</div>
+      <div class="ib ok" onclick="confirmInput()">确定</div>
+    </div>
+  </div>
+</div>
+
+<script>
+window.onerror=function(m){alert('脚本错误:'+m)}
+
+const ROW_CATS = ['出券','符石','魔核']
+const SUB_CATS = { '出券':['瞳券','银券','金券','彩券'], '魔核':['魔核一','魔核二'] }
+const SUB_CUSTOM = ['魔核']
+const KEY='records', SKEY='season', SSKEY='seasons', CKEY='customCats', SUBKEY='subCats'
+const pad=n=>String(n).padStart(2,'0')
+const fmt=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`
+const short=s=>`${s.slice(2,4)}/${s.slice(5,7)}/${s.slice(8,10)}`
+
+/* localStorage 被禁用时用内存兜底 */
+const _mem={}
+const store=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){_mem[k]=JSON.stringify(v)}}
+const load=(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return _mem[k]?JSON.parse(_mem[k]):d}}
+
+let type='income',cat='符石',catParent='符石'
+let seasons=load(SSKEY,['S14','S13','S12'])
+let season=load(SKEY,seasons[0])
+let recs=load(KEY,[])
+let custom=load(CKEY,{income:[],expense:[]})
+
+/* ---------- 类目 ---------- */
+function renderCats(){
+  const mk=(row,cats,typ)=>{
+    row.innerHTML=''
+    row.insertAdjacentHTML('beforeend',`<div class="row-tag ${typ==='income'?'tag-in':'tag-out'}">${typ==='income'?'出':'收'}</div>`)
+    cats.forEach(c=>{
+      const el=document.createElement('div')
+      el.className=`chip ${c==='自定义'?'add':''} ${type===typ&&catParent===c?'on':''}`
+      el.textContent=c
+      el.onclick=()=>pickCat(typ,c)
+      el.oncontextmenu=e=>{e.preventDefault();delCat(typ,c)}
+      row.appendChild(el)
+    })
+  }
+  mk(document.getElementById('incomeRow'),[...ROW_CATS,...custom.income,'自定义'],'income')
+  mk(document.getElementById('expenseRow'),[...ROW_CATS,...custom.expense,'自定义'],'expense')
+}
+function pickCat(t,c){
+  if(c==='自定义'){addCat(t);return}
+  const subs=getSubs(c),allow=SUB_CUSTOM.includes(c)
+  if(!subs.length&&!allow){type=t;cat=c;catParent=c;renderCats();return}
+  const items=allow?[...subs,'＋ 添加自定义']:subs
+  showSheet(items,i=>{
+    if(allow&&i===items.length-1){
+      showInput(`添加${c}子类`,n=>{
+        if(getSubs(c).includes(n))return alert('已存在')
+        const s=load(SUBKEY,{});s[c]=[...(s[c]||[]),n];store(SUBKEY,s)
+        type=t;cat=c+'·'+n;catParent=c;renderCats()
+      })
+    } else {
+      type=t;cat=c+'·'+items[i];catParent=c;renderCats()
+    }
+  })
+}
+function getSubs(p){const s=load(SUBKEY,{});return[...(SUB_CATS[p]||[]),...(s[p]||[])]}
+function addCat(t){
+  showInput('新增自定义类目',n=>{
+    if(n.length>6)return alert('最多6个字')
+    if(ROW_CATS.includes(n)||custom.income.includes(n)||custom.expense.includes(n))return alert('已存在')
+    custom[t].push(n);store(CKEY,custom)
+    type=t;cat=n;catParent=n;renderCats()
+  })
+}
+function delCat(t,c){
+  if(c==='自定义'||!custom[t].includes(c))return
+  showSheet(['删除类目「'+c+'」','取消'],i=>{
+    if(i===0){custom[t]=custom[t].filter(x=>x!==c);store(CKEY,custom);renderCats()}
+  },['danger'])
+}
+
+/* ---------- 底部选项弹窗 ---------- */
+function showSheet(items,cb,cls){
+  const m=document.getElementById('sheetMask')
+  const l=document.getElementById('sheetList')
+  l.innerHTML=''
+  items.forEach((it,i)=>{
+    const d=document.createElement('div')
+    d.className='sheet-item'+(it==='＋ 添加自定义'?' custom':'')+(cls&&cls[i]?(' '+cls[i]):'')
+    d.textContent=it
+    d.onclick=()=>{closeSheet();cb(i)}
+    l.appendChild(d)
+  })
+  const cancel=document.createElement('div')
+  cancel.className='sheet-item cancel'
+  cancel.textContent='取消'
+  cancel.onclick=closeSheet
+  l.appendChild(cancel)
+  m.classList.add('show')
+}
+function closeSheet(){document.getElementById('sheetMask').classList.remove('show')}
+
+/* ---------- 文本输入弹窗 ---------- */
+let inputCb=null
+function showInput(title,cb){
+  document.getElementById('inputTitle').textContent=title
+  document.getElementById('inputField').value=''
+  document.getElementById('inputMask').classList.add('show')
+  inputCb=cb
+  setTimeout(()=>document.getElementById('inputField').focus(),100)
+}
+function closeInput(){document.getElementById('inputMask').classList.remove('show');inputCb=null}
+function confirmInput(){
+  const v=document.getElementById('inputField').value.trim()
+  if(!v)return
+  const cb=inputCb
+  closeInput()
+  if(cb)cb(v)
+}
+
+/* ---------- 赛季 ---------- */
+function toggleSeason(){
+  const l=document.getElementById('seasonList')
+  l.style.display=l.style.display==='none'?'block':'none'
+  if(l.style.display==='block'){
+    l.innerHTML=''
+    seasons.forEach(s=>{
+      const d=document.createElement('div')
+      d.style.cssText='display:flex;justify-content:space-between;padding:10px 16px;font-size:14px;border-bottom:1px solid #f5f5f5;'
+      d.innerHTML=`${s}赛季 <span style="color:${s===season?'#e6432d':'#999'}">${s===season?'✓':''}</span>`
+      d.onclick=()=>{season=s;store(SKEY,s);l.style.display='none';refreshSeasonTitle();render()}
+      l.appendChild(d)
+    })
+    const add=document.createElement('div')
+    add.style.cssText='padding:10px 16px;font-size:14px;color:#8d7ef0;'
+    add.textContent='＋ 新增赛季'
+    add.onclick=()=>{
+      showInput('新增赛季,如 S15',n=>{
+        if(seasons.includes(n))return alert('已存在')
+        seasons.unshift(n);store(SSKEY,seasons)
+        season=n;store(SKEY,n)
+        l.style.display='none';refreshSeasonTitle();render()
+      })
+    }
+    l.appendChild(add)
+  }
+}
+function refreshSeasonTitle(){
+  document.getElementById('seasonTitle').textContent=season+'赛季'
+  document.getElementById('pTitle').textContent=season+'赛季记账'
+}
+
+/* ---------- 日期 / 金额 ---------- */
+function setQuick(el){
+  document.querySelectorAll('.day').forEach(d=>d.classList.remove('on'))
+  el.classList.add('on')
+  const dt=new Date()
+  if(el.dataset.d==='yesterday')dt.setDate(dt.getDate()-1)
+  document.getElementById('date').value=fmt(dt)
+}
+function calc(){
+  const p=Number(document.getElementById('price').value)
+  const q=Number(document.getElementById('qty').value)
+  if(p>0&&q>0)document.getElementById('amount').value=(Math.round(p*q*100)/100).toFixed(2)
+}
+['price','qty'].forEach(id=>document.getElementById(id).oninput=calc)
+
+/* ---------- 提交 / 删除 / 渲染 ---------- */
+function submit(){
+  const amount=Number(document.getElementById('amount').value)
+  const price=Number(document.getElementById('price').value)
+  const qty=Number(document.getElementById('qty').value)
+  const unit=document.getElementById('unit').value
+  const date=document.getElementById('date').value
+  const remark=document.getElementById('remark').value.trim()
+  if(!amount||amount<=0)return alert('请输入金额')
+  const rec={id:'r'+Date.now(),season,type,category:cat,date,remark,amount:Math.round(amount*100)/100,createTime:Date.now()}
+  if(price>0&&qty>0){rec.price=price;rec.qty=qty;rec.unit=unit}
+  recs.unshift(rec);store(KEY,recs)
+  document.getElementById('amount').value=''
+  document.getElementById('price').value=''
+  document.getElementById('qty').value=''
+  document.getElementById('remark').value=''
+  render()
+}
+function delRec(id){
+  showSheet(['删除这条记录','取消'],i=>{
+    if(i===0){recs=recs.filter(r=>r.id!==id);store(KEY,recs);render()}
+  },['danger'])
+}
+function render(){
+  const today=fmt(new Date())
+  const list=recs.filter(r=>r.season===season)
+    .sort((a,b)=>a.date===b.date?b.createTime-a.createTime:(a.date<b.date?1:-1))
+  let si=0,se=0,ti=0,te=0
+  list.forEach(r=>{
+    const inc=r.type==='income'
+    inc?si+=r.amount:se+=r.amount
+    if(r.date===today)inc?ti+=r.amount:te+=r.amount
+  })
+  document.getElementById('seasonIncome').textContent=si.toFixed(2)
+  document.getElementById('seasonExpense').textContent=se.toFixed(2)
+  document.getElementById('seasonProfit').textContent=(si-se).toFixed(2)
+  document.getElementById('todayIncome').textContent=ti.toFixed(2)
+  document.getElementById('todayExpense').textContent=te.toFixed(2)
+  document.getElementById('todayProfit').textContent=(ti-te).toFixed(2)
+
+  const box=document.getElementById('records')
+  if(!list.length){box.innerHTML='<div class="empty">暂无记录,开始记账吧</div>';return}
+  box.innerHTML=''
+  list.forEach(r=>{
+    const pq=r.price!=null&&r.qty!=null?`${r.price}元 × ${r.qty}${r.unit||'个'}`:''
+    const d=document.createElement('div')
+    d.className='record'
+    d.innerHTML=`<div class="r-left"><div class="r-cat">${r.category}<span class="r-tag ${r.type}">${r.type==='income'?'出':'收'}</span></div>
+      ${pq||r.remark?`<div class="r-remark">${pq} ${r.remark}</div>`:''}</div>
+      <div class="r-right"><div class="r-amt ${r.type}">${r.type==='income'?'+':'-'}${r.amount.toFixed(2)}</div>
+      <div class="r-date">${short(r.date)}</div></div>`
+    d.oncontextmenu=e=>{e.preventDefault();delRec(r.id)}
+    box.appendChild(d)
+  })
+}
+
+/* ---------- 统计 ---------- */
+function openStats(){
+  const body=document.getElementById('statsBody')
+  body.innerHTML=''
+  seasons.forEach((s,i)=>{
+    const list=recs.filter(r=>r.season===s)
+    let si=0,se=0;const inc={},exp={}
+    list.forEach(r=>{
+      const m=r.type==='income'?inc:exp
+      if(!m[r.category])m[r.category]={cat:r.category,count:0,sum:0}
+      m[r.category].count++;m[r.category].sum+=r.amount
+      r.type==='income'?si+=r.amount:se+=r.amount
+    })
+    const arr=m=>{
+      const a=Object.values(m).sort((x,y)=>y.sum-x.sum)
+      const max=a.length?a[0].sum:1
+      return a.map(x=>({...x,total:x.sum.toFixed(2),pct:`width:${Math.round(x.sum/max*100)}%`}))
+    }
+    const incA=arr(inc),expA=arr(exp)
+    const block=document.createElement('div')
+    block.className='s-block'
+    block.innerHTML=`<div class="s-head" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+      <div class="s-name">${s}赛季</div>
+      <div class="s-profit ${si-se>=0?'red':'green'}">盈利 ${(si-se).toFixed(2)}</div></div>
+      <div class="s-detail" style="display:${i===0?'block':'none'}">
+        <div class="s-total"><span>出(赚) <span class="red">${si.toFixed(2)}</span></span><span>收(付) <span class="green">${se.toFixed(2)}</span></span><span>盈 <span class="${si-se>=0?'red':'green'}">${(si-se).toFixed(2)}</span></span></div>
+        <div class="m-sec">出(赚)</div>${incA.length?incA.map(x=>`<div class="m-row"><div class="m-cat">${x.cat} <span class="m-count">${x.count}笔</span></div><div class="m-bar"><div class="m-fill red-bg" style="${x.pct}"></div></div><div class="m-amt red">${x.total}</div></div>`).join(''):'<div class="m-none">暂无记录</div>'}
+        <div class="m-sec">收(付)</div>${expA.length?expA.map(x=>`<div class="m-row"><div class="m-cat">${x.cat} <span class="m-count">${x.count}笔</span></div><div class="m-bar"><div class="m-fill green-bg" style="${x.pct}"></div></div><div class="m-amt green">${x.total}</div></div>`).join(''):'<div class="m-none">暂无记录</div>'}
+      </div>`
+    body.appendChild(block)
+  })
+  document.getElementById('statsMask').classList.add('show')
+}
+function closeStats(){document.getElementById('statsMask').classList.remove('show')}
+
+/* ---------- 初始化 ---------- */
+refreshSeasonTitle()
+document.getElementById('date').value=fmt(new Date())
+renderCats();render()
+</script>
+</body>
+</html>
